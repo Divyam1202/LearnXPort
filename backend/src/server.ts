@@ -14,7 +14,7 @@ const app = express();
 // app.use(cors());
 app.use(
   cors({
-    origin: "https://project-ui-lovat.vercel.app",
+    origin: "https://project-nine-sage-33.vercel.app",
     credentials: true,
   })
 );
