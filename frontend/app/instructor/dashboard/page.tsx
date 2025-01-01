@@ -26,6 +26,7 @@ export default function InstructorDashboard() {
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
   const [menuImage, setMenuImage] = useState<string | null>(null);
 
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
   useEffect(() => {
     if (!user || !hasRole(["instructor"])) {
       router.push("/login");
