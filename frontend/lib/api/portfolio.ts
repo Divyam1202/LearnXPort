@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URI;
 
 export async function getPortfolioByUsername(username: string) {
   const res = await fetch(`${API_URL}/api/portfolios/${username}`);

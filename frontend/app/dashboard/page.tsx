@@ -11,8 +11,7 @@ export default function PortfolioDashboard() {
   const [bio, setBio] = useState<string>("");
   const [portfolioUrl, setPortfolioUrl] = useState<string>("");
   const router = useRouter();
-  const API_BASE_URL =
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
   useEffect(() => {
     const token = localStorage.getItem("authToken");
     if (!token) {

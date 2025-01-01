@@ -178,8 +178,7 @@ export default function DashboardPage() {
       published: !prev.published,
     }));
   };
-  const API_BASE_URL =
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
   const handleSaveProfile = async () => {
     try {
