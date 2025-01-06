@@ -6,6 +6,8 @@ import { getUser, logout, hasRole } from "@/app/utils/auth";
 import { useTheme } from "@/app/providers/theme-providers";
 import axios from "axios";
 
+import { API_BASE_URL } from "@/app/config/api";
+
 // Types for state and components
 interface Module {
   title: string;
@@ -71,7 +73,6 @@ const CreateCourse = () => {
     }
   };
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {

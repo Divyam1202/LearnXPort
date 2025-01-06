@@ -178,7 +178,8 @@ export default function DashboardPage() {
       published: !prev.published,
     }));
   };
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+  const API_BASE_URL =
+    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
   const handleSaveProfile = async () => {
     try {
@@ -428,7 +429,7 @@ export default function DashboardPage() {
               onClick={async () => {
                 logout(); // Clear session
                 await new Promise((resolve) => setTimeout(resolve, 500)); // Wait for session clear
-                window.location.href = "/portfolio/"; // Redirect to login page
+                window.location.href = "/portfolio/login"; // Redirect to login page
               }}
               className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg"
             >

@@ -2,14 +2,14 @@ import { Request, Response } from "express";
 import Course from "../models/course.model.js";
 import { User } from "../models/user.model.js";
 import mongoose, { Schema } from "mongoose";
-import { PlayCourseResponse } from '../types/course.types.js';
+import { PlayCourseResponse } from "../types/course.types.js";
 
 // ================== Student Course Actions ==================
 
 // Enroll in Course (Students can enroll directly)
 export const enrollInCourse = async (req: Request, res: Response) => {
   const studentId = req.user?._id; // Type: string | undefined
-  const { courseId } = req.body;  // Type: string | undefined
+  const { courseId } = req.body; // Type: string | undefined
 
   // Validate studentId and courseId
   if (!studentId || !mongoose.Types.ObjectId.isValid(studentId)) {
@@ -27,7 +27,9 @@ export const enrollInCourse = async (req: Request, res: Response) => {
   }
 
   try {
-    const studentObjectId = new mongoose.Types.ObjectId(studentId) as unknown as mongoose.Schema.Types.ObjectId;
+    const studentObjectId = new mongoose.Types.ObjectId(
+      studentId
+    ) as unknown as mongoose.Schema.Types.ObjectId;
     const course = await Course.findById(courseId);
 
     if (!course) {
@@ -38,7 +40,11 @@ export const enrollInCourse = async (req: Request, res: Response) => {
     }
 
     // Check if the student is already enrolled using .toString() for comparison
-    if (course.students.some(student => student.toString() === studentObjectId.toString())) {
+    if (
+      course.students.some(
+        (student) => student.toString() === studentObjectId.toString()
+      )
+    ) {
       return res.status(400).json({
         success: false,
         message: "You are already enrolled in this course",
@@ -65,24 +71,33 @@ export const enrollInCourse = async (req: Request, res: Response) => {
 export const withdrawFromCourse = async (req: Request, res: Response) => {
   const studentId = req.user?._id;
 
-  if (!studentId || typeof studentId !== 'string') {
-    return res.status(400).json({ success: false, message: "Student not authenticated" });
+  if (!studentId || typeof studentId !== "string") {
+    return res
+      .status(400)
+      .json({ success: false, message: "Student not authenticated" });
   }
 
   const { courseId } = req.body;
-  const studentObjectId = new Schema.Types.ObjectId(studentId);  // Convert string to ObjectId
+  const studentObjectId = new Schema.Types.ObjectId(studentId); // Convert string to ObjectId
 
   try {
     const course = await Course.findById(courseId);
     if (!course) {
-      return res.status(404).json({ success: false, message: "Course not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Course not found" });
     }
 
     if (!course.students.includes(studentObjectId)) {
-      return res.status(400).json({ success: false, message: "You are not enrolled in this course" });
+      return res.status(400).json({
+        success: false,
+        message: "You are not enrolled in this course",
+      });
     }
 
-    course.students = course.students.filter(student => student.toString() !== studentObjectId.toString());
+    course.students = course.students.filter(
+      (student) => student.toString() !== studentObjectId.toString()
+    );
     await course.save();
 
     return res.status(200).json({
@@ -102,9 +117,11 @@ export const withdrawFromCourse = async (req: Request, res: Response) => {
 export const viewEnrolledCourses = async (req: Request, res: Response) => {
   const studentId = req.user?._id;
 
-  if (!studentId || typeof studentId !== 'string') {
+  if (!studentId || typeof studentId !== "string") {
     console.error("Student not authenticated or invalid ID:", studentId);
-    return res.status(400).json({ success: false, message: "Student not authenticated" });
+    return res
+      .status(400)
+      .json({ success: false, message: "Student not authenticated" });
   }
 
   const studentObjectId = new mongoose.Types.ObjectId(studentId); // Convert string to ObjectId
@@ -115,7 +132,9 @@ export const viewEnrolledCourses = async (req: Request, res: Response) => {
 
     if (courses.length === 0) {
       console.log("No courses found for student:", studentObjectId);
-      return res.status(404).json({ success: false, message: "No courses found for this student" });
+      return res
+        .status(404)
+        .json({ success: false, message: "No courses found for this student" });
     }
 
     console.log("Courses found:", courses);
@@ -134,21 +153,22 @@ export const viewEnrolledCourses = async (req: Request, res: Response) => {
   }
 };
 
-
 // View All Courses (Students can view courses, not enroll or withdraw directly)
 export const viewCourses = async (req: Request, res: Response) => {
   const studentId = req.user?._id;
 
-  if (!studentId || typeof studentId !== 'string') {
-    return res.status(400).json({ success: false, message: "Student not authenticated" });
+  if (!studentId || typeof studentId !== "string") {
+    return res
+      .status(400)
+      .json({ success: false, message: "Student not authenticated" });
   }
 
-  const studentObjectId = new Schema.Types.ObjectId(studentId);  // Convert string to ObjectId
+  const studentObjectId = new Schema.Types.ObjectId(studentId); // Convert string to ObjectId
 
   try {
     const courses = await Course.find();
 
-    const coursesWithEnrollmentStatus = courses.map(course => ({
+    const coursesWithEnrollmentStatus = courses.map((course) => ({
       ...course.toObject(),
       isEnrolled: course.students.includes(studentObjectId),
     }));
@@ -167,22 +187,25 @@ export const viewCourses = async (req: Request, res: Response) => {
 };
 
 // Play Course (Students can access and play course content)
-export const playCourse = async (req: Request, res: Response<PlayCourseResponse>) => {
+export const playCourse = async (
+  req: Request,
+  res: Response<PlayCourseResponse>
+) => {
   const studentId = req.user?._id;
 
-  if (!studentId || typeof studentId !== 'string') {
-    return res.status(400).json({ 
-      success: false, 
-      message: "Student not authenticated" 
+  if (!studentId || typeof studentId !== "string") {
+    return res.status(400).json({
+      success: false,
+      message: "Student not authenticated",
     });
   }
 
   const { courseId } = req.params;
 
   if (!courseId || !mongoose.Types.ObjectId.isValid(courseId)) {
-    return res.status(400).json({ 
-      success: false, 
-      message: "Invalid or missing course ID" 
+    return res.status(400).json({
+      success: false,
+      message: "Invalid or missing course ID",
     });
   }
 
@@ -192,17 +215,17 @@ export const playCourse = async (req: Request, res: Response<PlayCourseResponse>
       .lean(); // Use lean() for better performance
 
     if (!course) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Course not found" 
+      return res.status(404).json({
+        success: false,
+        message: "Course not found",
       });
     }
 
     // Check enrollment
-    if (!course.students.some(student => student.toString() === studentId)) {
-      return res.status(403).json({ 
-        success: false, 
-        message: "You are not enrolled in this course" 
+    if (!course.students.some((student) => student.toString() === studentId)) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not enrolled in this course",
       });
     }
 
@@ -213,7 +236,7 @@ export const playCourse = async (req: Request, res: Response<PlayCourseResponse>
         title: course.title,
         description: course.description,
         courseCode: course.courseCode as string,
-        modules: course.modules.map(module => ({
+        modules: course.modules.map((module) => ({
           title: module.title,
           resourceLink: module.resourceLink,
         })),
@@ -222,7 +245,7 @@ export const playCourse = async (req: Request, res: Response<PlayCourseResponse>
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: error instanceof Error ? error.message : "Unexpected error"
+      message: error instanceof Error ? error.message : "Unexpected error",
     });
   }
 };
@@ -266,8 +289,8 @@ export const updateProgress = async (req: Request, res: Response) => {
     }
 
     // Check if the student is enrolled in the course
-    const isEnrolled = course.students.some((student) =>
-      student.toString() === studentId
+    const isEnrolled = course.students.some(
+      (student) => student.toString() === studentId
     );
 
     if (!isEnrolled) {
@@ -285,11 +308,12 @@ export const updateProgress = async (req: Request, res: Response) => {
     if (progressIndex >= 0) {
       // Update existing progress
       course.progress[progressIndex].progress = progress;
-      course.progress[progressIndex].lastPlayedModule = lastPlayedModule || null;
+      course.progress[progressIndex].lastPlayedModule =
+        lastPlayedModule || null;
     } else {
       // Add new progress entry
       course.progress.push({
-        student: new mongoose.Types.ObjectId(studentId),  // Ensure this is an ObjectId
+        student: new mongoose.Types.ObjectId(studentId), // Ensure this is an ObjectId
         progress,
         lastPlayedModule: lastPlayedModule || null,
       });
@@ -310,8 +334,6 @@ export const updateProgress = async (req: Request, res: Response) => {
   }
 };
 
-
-
 // ================== Instructor Course Actions ==================
 
 // Create a Course (Instructors can create courses)
@@ -319,7 +341,9 @@ export const createCourse = async (req: Request, res: Response) => {
   const instructorId = req.user?._id; // This is set by the authenticate middleware
 
   if (!instructorId) {
-    return res.status(400).json({ success: false, message: "Instructor not authenticated" });
+    return res
+      .status(400)
+      .json({ success: false, message: "Instructor not authenticated" });
   }
 
   const instructorObjectId = new mongoose.Types.ObjectId(instructorId); // Convert string to ObjectId
@@ -330,7 +354,10 @@ export const createCourse = async (req: Request, res: Response) => {
     // Ensure the user is an instructor
     const instructor = await User.findById(instructorObjectId).select("role");
     if (!instructor || instructor.role !== "instructor") {
-      return res.status(403).json({ success: false, message: "Only instructors can create courses" });
+      return res.status(403).json({
+        success: false,
+        message: "Only instructors can create courses",
+      });
     }
 
     // Create the new course
@@ -340,11 +367,13 @@ export const createCourse = async (req: Request, res: Response) => {
       courseCode,
       capacity,
       instructor: instructorObjectId,
-      students: [],  // Initialize with an empty array
-      modules: modules.map((module: { title: string, resourceLink: string }) => ({
-        title: module.title,
-        resourceLink: module.resourceLink,
-      })),
+      students: [], // Initialize with an empty array
+      modules: modules.map(
+        (module: { title: string; resourceLink: string }) => ({
+          title: module.title,
+          resourceLink: module.resourceLink,
+        })
+      ),
     });
 
     await newCourse.save();
@@ -367,17 +396,22 @@ export const createCourse = async (req: Request, res: Response) => {
 export const viewTeacherCourses = async (req: Request, res: Response) => {
   const instructorId = req.user?._id;
 
-  if (!instructorId || typeof instructorId !== 'string') {
-    return res.status(400).json({ success: false, message: "Instructor not authenticated" });
+  if (!instructorId || typeof instructorId !== "string") {
+    return res
+      .status(400)
+      .json({ success: false, message: "Instructor not authenticated" });
   }
 
-  const instructorObjectId = new mongoose.Types.ObjectId(instructorId);  // Convert string to ObjectId
+  const instructorObjectId = new mongoose.Types.ObjectId(instructorId); // Convert string to ObjectId
 
   try {
     const courses = await Course.find({ instructor: instructorObjectId });
 
     if (courses.length === 0) {
-      return res.status(404).json({ success: false, message: "No courses found for this instructor" });
+      return res.status(404).json({
+        success: false,
+        message: "No courses found for this instructor",
+      });
     }
 
     return res.status(200).json({

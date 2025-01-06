@@ -3,7 +3,6 @@ import Complaint from "../models/complaints.model.js";
 import { User } from "../models/user.model.js"; // Correct import for named export
 
 // Create Complaint
-// const errorMessage = error.message || 'An unknown error occurred';
 export const createComplaint = async (req: Request, res: Response) => {
   try {
     const { description, type } = req.body;
@@ -34,12 +33,10 @@ export const createComplaint = async (req: Request, res: Response) => {
       .select("firstName lastName role")
       .lean();
     if (!student || student.role !== "student") {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Only students can create complaints",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Only students can create complaints",
+      });
     }
 
     const newComplaint = await Complaint.create({
@@ -74,7 +71,7 @@ export const createComplaint = async (req: Request, res: Response) => {
   }
 };
 
-// Get All Complaints (Admin/Staff)
+// Get All Complaints (Instructor)
 export const getComplaints = async (req: Request, res: Response) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
@@ -110,7 +107,7 @@ export const getComplaints = async (req: Request, res: Response) => {
   }
 };
 
-// Update Complaint (Student)
+// Update Complaint (Instructor)
 export const updateComplaint = async (req: Request, res: Response) => {
   const { id } = req.params; // Extract complaint ID from the route
   const { description, status, type } = req.body; // Extract updates from the request body
@@ -162,6 +159,69 @@ export const updateComplaint = async (req: Request, res: Response) => {
   }
 };
 
+// Update Student Complaint (Student)
+export const updateStudentComplaint = async (req: Request, res: Response) => {
+  const { id } = req.params; // Extract complaint ID from the route
+  const { description } = req.body; // Extract updates from the request body
+  const studentId = req.user?._id; // Ensure the student is authenticated
+
+  try {
+    // Check if the student is authenticated
+    if (!studentId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    // Find the complaint by ID and ensure it belongs to the student
+    const complaint = await Complaint.findOne({ _id: id, student: studentId });
+    if (!complaint) {
+      return res.status(404).json({
+        success: false,
+        message: "Complaint not found or unauthorized",
+      });
+    }
+
+    // Validate and update the description
+    if (description !== undefined) {
+      if (description.trim().length === 0) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Description cannot be empty" });
+      }
+      complaint.description = description.trim();
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "No description provided for update",
+      });
+    }
+
+    // Save the updated complaint
+    await complaint.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Complaint updated successfully",
+      complaint: {
+        _id: complaint._id,
+        description: complaint.description,
+        type: complaint.type,
+        status: complaint.status,
+        createdAt: complaint.createdAt,
+        updatedAt: complaint.updatedAt,
+      },
+    });
+  } catch (error: unknown) {
+    console.error("Error updating student complaint:", error);
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+
 // Delete Complaint (Admin Only)
 export const deleteComplaint = async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -189,15 +249,15 @@ export const deleteComplaint = async (req: Request, res: Response) => {
 // Get Student's Own Complaints
 export const getStudentComplaints = async (req: Request, res: Response) => {
   try {
-    const instructorId = req.user?._id;
+    const studentId = req.user?._id;
 
-    if (!instructorId) {
+    if (!studentId) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
     // Filter complaints optionally based on query params (e.g., status, type)
     const { status, type } = req.query;
-    const filter: Record<string, any> = {};
+    const filter: Record<string, any> = { student: studentId };
 
     if (status) {
       filter.status = status;

@@ -3,6 +3,12 @@ import cors from "cors";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import authRoutes from "./routes/auth.routes.js";
+import studentRoutes from "./routes/student.routes.js";
+import instructorRoutes from "./routes/instructor.routes.js";
+import courseRoutes from "./routes/course.routes.js";
+import passwordroutes from "./routes/passwordreset.routes.js";
+import quizRoutes from "./routes/quiz.routes.js";
+import complaintRoutes from "./routes/complaint.routes.js";
 import http from "http";
 
 // Configure dotenv
@@ -11,19 +17,25 @@ dotenv.config();
 const app = express();
 
 // Middleware
-// app.use(cors());
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URL,
-    credentials: true,
-  })
-);
+app.use(cors());
+// app.use(
+//   cors({
+//     origin: "https://lmsxport-frontend.vercel.app/",
+//     credentials: true,
+//   })
+// );
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/student", studentRoutes);
+app.use("/api/instructor", instructorRoutes);
+app.use("/api/courses", courseRoutes);
+app.use("/api/complaints", complaintRoutes);
+app.use("/api/password", passwordroutes);
+app.use("/api/quiz", quizRoutes);
 
 // Database connection
 mongoose

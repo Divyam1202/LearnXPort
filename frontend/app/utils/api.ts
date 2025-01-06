@@ -1,7 +1,7 @@
 // utils/api.ts
 import axios from "axios";
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 export const getPortfolios = async () => {
   try {
@@ -15,7 +15,7 @@ export const getPortfolios = async () => {
 
 export const createPortfolio = async (portfolioData: any) => {
   try {
-    const response = await axios.post(`${apiUrl}/api/portfolio`, portfolioData);
+    const response = await axios.post(`${apiUrl}/portfolio`, portfolioData);
     return response.data;
   } catch (error) {
     console.error("Error creating portfolio:", error);

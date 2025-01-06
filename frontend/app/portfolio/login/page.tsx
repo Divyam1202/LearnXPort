@@ -12,7 +12,8 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { theme, toggleTheme } = useTheme();
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+  const API_BASE_URL =
+    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,17 +21,20 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.message || "Login failed");
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Login failed");
       }
+
+      const data = await response.json();
 
       // Store the token and user data in localStorage
       localStorage.setItem("token", data.token);
@@ -38,17 +42,13 @@ export default function LoginPage() {
 
       // Redirect based on user role
       const redirectPath =
-        data.user.role === "student"
-          ? "/student/dashboard"
-          : data.user.role === "instructor"
-          ? "/instructor/dashboard"
-          : data.user.role === "portfolio"
+        data.user.role === "portfolio"
           ? "/portfolio/dashboard"
           : "/admin/dashboard";
 
       router.push(redirectPath);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError((err as Error).message || "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -199,7 +199,7 @@ export default function LoginPage() {
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Don't have an account?{" "}
               <Link
-                href="/register"
+                href="/portfolio/register"
                 className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
               >
                 Register here

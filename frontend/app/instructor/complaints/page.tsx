@@ -9,10 +9,10 @@ interface ComplaintType {
   _id: string;
   description: string;
   status: "Pending" | "Resolved";
-  type: "Enroll" | "Withdraw" |  "Completion" | "Other" | "All";
-  instructorDetails: {
+  type: "Enroll" | "Withdraw" | "Completion" | "Other" | "All";
+  studentDetails: {
     firstName: string;
-    lastName: string;
+    roomNumber: string;
   };
   createdAt: string;
 }
@@ -24,7 +24,7 @@ export default function ComplaintsPage() {
   const [loading, setLoading] = useState(true);
   const [user] = useState<User | null>(getUser() as User | null);
   const [sortBy, setSortBy] = useState<
-    "Enroll" | "Withdraw" |  "Completion" | "Other" | "All"
+    "Enroll" | "Withdraw" | "Completion" | "Other" | "All"
   >("All");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<
@@ -51,54 +51,68 @@ export default function ComplaintsPage() {
   const fetchComplaints = async () => {
     try {
       const token = localStorage.getItem("token");
-      if (!token) {
-        console.error("No token found. User might not be authenticated.");
-        return;
-      }
-  
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/instructor/complaints`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/complaints/instructor/complaints`,
         {
-          method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
         }
       );
-  
-      // Check if the response is successful
-      if (response.ok) {
-        const data = await response.json();
-        // Assuming the API returns complaints in a field named "complaints"
-        if (data && Array.isArray(data.complaints)) {
-          setComplaints(data.complaints); // Update state with complaints
-          setLoading(false);
-        } else {
-          console.error(
-            "Unexpected response structure. Expected `complaints` array:",
-            data
-          );
-          setComplaints([]);
-          setLoading(false);
-        }
-      } else {
-        const errorText = await response.text();
-        console.error(
-          `Error fetching complaints: ${response.status} - ${response.statusText}`,
-          errorText
-        );
-        setComplaints([]);
-        setLoading(false);
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch complaints");
+      }
+
+      const data = await response.json();
+      if (data.success && Array.isArray(data.complaints)) {
+        setComplaints(data.complaints);
       }
     } catch (error) {
       console.error("Failed to fetch complaints:", error);
-      setComplaints([]);
+    } finally {
       setLoading(false);
     }
   };
-  
-  
+
+  const handleResolveComplaint = async (
+    complaintId: string,
+    event: React.MouseEvent<HTMLButtonElement>
+  ) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/complaints/instructor/update-complaint/${complaintId}`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status: "Resolved" }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to resolve complaint");
+      }
+
+      // Remove focus from the button
+      event.currentTarget.blur();
+
+      // Update the complaint status in the state
+      setComplaints((prevComplaints) =>
+        prevComplaints.map((complaint) =>
+          complaint._id === complaintId
+            ? { ...complaint, status: "Resolved" }
+            : complaint
+        )
+      );
+    } catch (error) {
+      console.error("Failed to resolve complaint:", error);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -111,137 +125,61 @@ export default function ComplaintsPage() {
     }
   };
 
-  // const handleDelete = async (complaintId: string) => {
-  //   if (!confirm("Are you sure you want to delete this complaint?")) return;
-
-  //   try {
-  //     const token = localStorage.getItem("token");
-  //     const response = await fetch(
-  //       `${process.env.NEXT_PUBLIC_API_URL}/api/student/complaint/${complaintId}`,
-  //       {
-  //         method: "DELETE",
-  //         headers: {
-  //           Authorization: `Bearer ${token}`,
-  //           "Content-Type": "application/json",
-  //         },
-  //       }
-  //     );
-
-  //     if (!response.ok) {
-  //       throw new Error("Failed to delete complaint");
-  //     }
-
-  //     // Refresh complaints list
-  //     fetchComplaints();
-  //   } catch (error) {
-  //     console.error("Failed to delete complaint:", error);
-  //   }
-  // };
-
-  const handleMarkAsResolved = async (complaintId: string) => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/instructor/update-complaint/${complaintId}`,
-        {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ status: "Resolved" }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to update complaint");
-      }
-
-      // Refresh complaints list
-      fetchComplaints();
-    } catch (error) {
-      console.error("Failed to update complaint:", error);
-    }
-  };
-
-  // const handleUpdateDescription = async (id: string, description: string) => {
-  //   try {
-  //     const token = localStorage.getItem("token");
-  //     const response = await fetch(
-  //       `${process.env.NEXT_PUBLIC_API_URL}/api/student/complaint-update/${id}`,
-  //       {
-  //         method: "PATCH",
-  //         headers: {
-  //           Authorization: `Bearer ${token}`,
-  //           "Content-Type": "application/json",
-  //         },
-  //         body: JSON.stringify({ description }),
-  //       }
-  //     );
-
-  //     if (!response.ok) {
-  //       throw new Error("Failed to update complaint");
-  //     }
-
-  //     // Refresh complaints list
-  //     fetchComplaints();
-  //   } catch (error) {
-  //     console.error("Failed to update complaint:", error);
-  //   }
-  // };
-
-
   const getSortedComplaints = () => {
     if (sortBy === "All") return complaints;
     return complaints.filter((complaint) => complaint.type === sortBy);
   };
 
   const getFilteredComplaints = () => {
-    const now = new Date();
-    const today = new Date(now.setHours(0, 0, 0, 0));
-    const weekAgo = new Date(now.setDate(now.getDate() - 7));
-    const monthAgo = new Date(now.setMonth(now.getMonth() - 1));
-  
-    return complaints.filter((complaint) => {
-      const complaintDate = new Date(complaint.createdAt);
-  
-      // Filter by type
-      if (sortBy !== "All" && complaint.type !== sortBy) {
-        return false;
-      }
-  
-      // Filter by status
-      if (statusFilter !== "All" && complaint.status !== statusFilter) {
-        return false;
-      }
-  
-      // Filter by date
-      if (dateFilter !== "All") {
-        if (
-          (dateFilter === "today" && complaintDate < today) ||
-          (dateFilter === "week" && complaintDate < weekAgo) ||
-          (dateFilter === "month" && complaintDate < monthAgo)
-        ) {
-          return false;
+    let filtered = [...complaints].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    if (sortBy !== "All") {
+      filtered = filtered.filter((complaint) => complaint.type === sortBy);
+    }
+
+    if (statusFilter !== "All") {
+      filtered = filtered.filter(
+        (complaint) => complaint.status === statusFilter
+      );
+    }
+
+    if (dateFilter !== "All") {
+      const now = new Date();
+      const today = new Date(now.setHours(0, 0, 0, 0));
+      filtered = filtered.filter((complaint) => {
+        const complaintDate = new Date(complaint.createdAt);
+        switch (dateFilter) {
+          case "today":
+            return complaintDate >= today;
+          case "week":
+            const weekAgo = new Date(now.setDate(now.getDate() - 7));
+            return complaintDate >= weekAgo;
+          case "month":
+            const monthAgo = new Date(now.setMonth(now.getMonth() - 1));
+            return complaintDate >= monthAgo;
+          default:
+            return true;
         }
-      }
-  
-      // Filter by search term
-      if (searchTerm) {
-        const searchLower = searchTerm.toLowerCase();
-        if (
-          !complaint.description.toLowerCase().includes(searchLower) &&
-          !complaint.instructorDetails?.firstName.toLowerCase().includes(searchLower) &&
-          !complaint.instructorDetails?.lastName.toLowerCase().includes(searchLower)
-        ) {
-          return false;
-        }
-      }
-  
-      return true;
-    });
+      });
+    }
+
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (complaint) =>
+          complaint.description
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          complaint.studentDetails?.firstName
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase())
+      );
+    }
+
+    return filtered;
   };
-  
 
   const filteredComplaints = getFilteredComplaints();
   const totalPages = Math.ceil(filteredComplaints.length / itemsPerPage);
@@ -305,7 +243,7 @@ export default function ComplaintsPage() {
                 Logout
               </button>
               <button
-                onClick={() => router.push('/instructor/dashboard')}
+                onClick={() => router.push("/instructor/dashboard")}
                 className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 rounded-xl transition-all duration-200"
               >
                 Back to Dashboard
@@ -347,22 +285,24 @@ export default function ComplaintsPage() {
                 Type
               </label>
               <div className="flex gap-2">
-                {["all", "Enroll", "Withdraw", "Completion", "Other", "All"].map((type) => (
-                  <FilterButton
-                    key={type}
-                    active={sortBy === type}
-                    onClick={() => setSortBy(type as typeof sortBy)}
-                  >
-                    <span className="flex items-center gap-2">
+                {["All", "Enroll", "Withdraw", "Completion", "Other"].map(
+                  (type) => (
+                    <FilterButton
+                      key={type}
+                      active={sortBy === type}
+                      onClick={() => setSortBy(type as typeof sortBy)}
+                    >
+                      <span className="flex items-center gap-2">
+                        {type === "All" && "👀"}
                         {type === "Enroll" && "📚"}
-                        {type === "Withdraw" && "🔻"}
+                        {type === "Withdraw" && "🔄"}
                         {type === "Completion" && "✅"}
                         {type === "Other" && "📝"}
-                        {type === "All" && "👀"}
-                      {type.charAt(0).toUpperCase() + type.slice(1)}
-                    </span>
-                  </FilterButton>
-                ))}
+                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                      </span>
+                    </FilterButton>
+                  )
+                )}
               </div>
             </div>
 
@@ -372,7 +312,7 @@ export default function ComplaintsPage() {
                 Status
               </label>
               <div className="flex gap-2">
-                {["all", "Pending", "Resolved"].map((status) => (
+                {["All", "Pending", "Resolved"].map((status) => (
                   <FilterButton
                     key={status}
                     active={statusFilter === status}
@@ -426,9 +366,6 @@ export default function ComplaintsPage() {
                     Student Name
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Course
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Type
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -453,19 +390,17 @@ export default function ComplaintsPage() {
                         {new Date(complaint.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                        {complaint.instructorDetails?.firstName || "N/A"}
+                        {complaint.studentDetails?.firstName || "N/A"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {complaint.instructorDetails?.lastName || "N/A"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        <span className="inline-flex items-center">
-                            {complaint.type === "Enroll" && "📚"}
-                            {complaint.type === "Withdraw" && "🔻"}
-                            {complaint.type === "Completion" && "✅"}
-                            {complaint.type === "Other" && "📝"}
-                            {complaint.type === "All" && "👀"}
-                            {complaint.type}
+                        <span className="flex items-center gap-2">
+                          {complaint.type === "All" && "👀"}
+                          {complaint.type === "Enroll" && "📚"}
+                          {complaint.type === "Withdraw" && "🔄"}
+                          {complaint.type === "Completion" && "✅"}
+                          {complaint.type === "Other" && "📝"}
+                          {complaint.type.charAt(0).toUpperCase() +
+                            complaint.type.slice(1)}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-md truncate">
@@ -480,34 +415,18 @@ export default function ComplaintsPage() {
                           {complaint.status}
                         </span>
                       </td>
-                      <div className="flex gap-2">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         {complaint.status === "Pending" && (
-                          <>
-                            <button
-                              onClick={() =>
-                                handleMarkAsResolved(complaint._id)
-                              }
-                              className="inline-flex items-center px-3 py-1.5 bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:hover:bg-green-800/50 text-green-700 dark:text-green-400 rounded-lg transition-colors duration-200"
-                            >
-                              <span className="text-sm font-medium">
-                                Mark Resolved
-                              </span>
-                            </button>
-                            {/* <button
-                              onClick={() => setEditingComplaint(complaint)}
-                              className="inline-flex items-center px-3 py-1.5 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-800/50 text-blue-700 dark:text-blue-400 rounded-lg transition-colors duration-200"
-                            >
-                              <span className="text-sm font-medium">Edit</span>
-                            </button> */}
-                          </>
+                          <button
+                            onClick={(event) =>
+                              handleResolveComplaint(complaint._id, event)
+                            }
+                            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors duration-200"
+                          >
+                            Resolve
+                          </button>
                         )}
-                        {/* <button
-                          onClick={() => handleDelete(complaint._id)}
-                          className="inline-flex items-center px-3 py-1.5 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-800/50 text-red-700 dark:text-red-400 rounded-lg transition-colors duration-200"
-                        >
-                          <span className="text-sm font-medium">Delete</span>
-                        </button> */}
-                      </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

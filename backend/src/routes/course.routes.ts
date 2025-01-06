@@ -7,10 +7,9 @@ import {
   viewTeacherCourses,
   withdrawFromCourse,
   playCourse,
-  updateProgress
+  updateProgress,
 } from "../controllers/course.controller.js";
 import { authenticateToken } from "../middleware/auth.middleware.js";
-
 
 const router = express.Router();
 

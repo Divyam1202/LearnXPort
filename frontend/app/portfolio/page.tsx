@@ -24,7 +24,8 @@ export default function Dashboard() {
   const router = useRouter();
   //const { theme, toggleTheme } = useTheme();
   const [loading, setLoading] = useState<boolean>(true);
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+  const API_BASE_URL =
+    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
   useEffect(() => {
     const fetchPortfolios = async () => {

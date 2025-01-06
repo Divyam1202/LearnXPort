@@ -99,7 +99,7 @@ export const getStudentComplaints = async (req: Request, res: Response) => {
 // Update Student Profile
 export const updateStudentProfile = async (req: Request, res: Response) => {
   const studentId = req.user?._id; // The authenticated student's ID
-  const { firstName, lastName, email, phoneNumber } = req.body; // Fields to update
+  const { firstName, lastName, email } = req.body; // Fields to update
 
   try {
     // Find the student by ID
@@ -114,7 +114,6 @@ export const updateStudentProfile = async (req: Request, res: Response) => {
     student.firstName = firstName || student.firstName;
     student.lastName = lastName || student.lastName;
     student.email = email || student.email;
-    student.phoneNumber = phoneNumber || student.phoneNumber;
 
     // Save the updated student details
     await student.save();
@@ -201,10 +200,10 @@ export const changeStudentPassword = async (req: Request, res: Response) => {
     }
 
     // Hash the new password
-    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+    // const hashedNewPassword = await bcrypt.hash(newPassword, 10);
 
     // Update the password
-    student.password = hashedNewPassword;
+    student.password = newPassword;
     await student.save();
 
     return res.status(200).json({

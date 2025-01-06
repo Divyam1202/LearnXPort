@@ -5,11 +5,13 @@ import {
   updateComplaint,
   deleteComplaint,
   getStudentComplaints,
+  updateStudentComplaint,
   deleteStudentComplaint,
 } from "../controllers/Complaints.controller.js";
-import { authenticateToken } from "../middleware/auth.middleware.js"; // Authentication middleware
-import { authorizeAdmin } from "../middleware/authorizeAdmin.js"; // Admin authorization middleware
+import { authenticateToken } from "../middleware/auth.middleware.js";
+import { authorizeAdmin } from "../middleware/authorizeAdmin.js";
 import { authorizeRoles } from "../middleware/auth.middleware.js";
+
 const router = express.Router();
 
 // Middleware to authenticate the user (e.g., checking the JWT token)
@@ -18,13 +20,29 @@ router.use(authenticateToken);
 // Route to create a new complaint
 router.post("/create", createComplaint);
 
-// Route to get all complaints (Admin only)
-router.get("/complaints", authorizeRoles(["instructor"]), getComplaints);
+// Route to get all complaints (Instructor only)
+router.get(
+  "/instructor/complaints",
+  authorizeRoles(["instructor"]),
+  getComplaints
+);
 
 // Route to get complaints of a specific student (authenticated student only)
 router.get("/student", getStudentComplaints);
 
-// Route to update an existing complaint (Student only, for their own complaints)
+// Route to update an existing complaint (Instructor only)
+router.patch(
+  "/instructor/update-complaint/:id",
+  authorizeRoles(["instructor"]),
+  updateComplaint
+);
+
+// Route to update a student's complaint (Student only)
+router.patch(
+  "/student/update-complaint/:id",
+  authorizeRoles(["student"]),
+  updateStudentComplaint
+);
 
 // Route to delete a complaint (Admin only)
 router.delete("/:id", authorizeAdmin, deleteComplaint);

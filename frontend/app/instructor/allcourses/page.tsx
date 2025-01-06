@@ -187,7 +187,7 @@ const TeacherCourses = () => {
                 Logout
               </button>
               <button
-                onClick={() => router.push('/instructor/dashboard')}
+                onClick={() => router.push("/instructor/dashboard")}
                 className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 rounded-xl transition-all duration-200"
               >
                 Back to Dashboard
@@ -198,7 +198,9 @@ const TeacherCourses = () => {
       </nav>
 
       <div className="teacher-courses-container max-w-7xl mx-auto p-6">
-        <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-6">My Published Courses</h2>
+        <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-6">
+          My Published Courses
+        </h2>
         {courses.length === 0 ? (
           <div>No courses found.</div>
         ) : (
@@ -208,7 +210,9 @@ const TeacherCourses = () => {
                 key={course._id}
                 className="course-card p-4 bg-white dark:bg-gray-800 rounded-md shadow-lg hover:bg-purple-200 dark:hover:bg-purple-700 transition duration-300"
               >
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">{course.title}</h3>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                  {course.title}
+                </h3>
                 <p className="text-gray-700 dark:text-gray-300">
                   <strong>Description:</strong> {course.description}
                 </p>
@@ -218,7 +222,9 @@ const TeacherCourses = () => {
                 <p className="text-gray-700 dark:text-gray-300">
                   <strong>Capacity:</strong> {course.capacity}
                 </p>
-                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mt-4">Enrolled Students ({course.students.length}):</h4>
+                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mt-4">
+                  Enrolled Students ({course.students.length}):
+                </h4>
                 {course.students.length > 0 ? (
                   <ul className="list-disc list-inside text-gray-700 dark:text-gray-300">
                     {course.students.map((student) => (
@@ -228,9 +234,13 @@ const TeacherCourses = () => {
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-gray-700 dark:text-gray-300">No students enrolled yet.</p>
+                  <p className="text-gray-700 dark:text-gray-300">
+                    No students enrolled yet.
+                  </p>
                 )}
-                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mt-4">Modules:</h4>
+                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mt-4">
+                  Modules:
+                </h4>
                 {course.modules.length > 0 ? (
                   <div className="modules-list space-y-4">
                     {course.modules.map((module, index) => (
@@ -238,26 +248,36 @@ const TeacherCourses = () => {
                         key={index}
                         className="module-card p-4 bg-gray-200 dark:bg-gray-700 rounded-md shadow-md hover:bg-purple-200 dark:hover:bg-purple-600 transition-colors duration-300"
                       >
-                        <h5 className="font-medium text-gray-900 dark:text-white">{module.title}</h5>
-                        {module.resourceLink && module.resourceLink.includes("youtube.com") ? (
+                        <h5 className="font-medium text-gray-900 dark:text-white">
+                          {module.title}
+                        </h5>
+                        {module.resourceLink &&
+                        module.resourceLink.includes("youtube.com") ? (
                           <div className="video-container mt-2">
                             <iframe
                               width="100%"
                               height="315"
-                              src={module.resourceLink.replace("watch?v=", "embed/")}
+                              src={module.resourceLink.replace(
+                                "watch?v=",
+                                "embed/"
+                              )}
                               title={`YouTube video for ${module.title}`}
                               frameBorder="0"
                               allowFullScreen
                             ></iframe>
                           </div>
                         ) : (
-                          <p className="text-gray-700 dark:text-gray-300">No video available for this module.</p>
+                          <p className="text-gray-700 dark:text-gray-300">
+                            No video available for this module.
+                          </p>
                         )}
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-gray-700 dark:text-gray-300">No modules available.</p>
+                  <p className="text-gray-700 dark:text-gray-300">
+                    No modules available.
+                  </p>
                 )}
 
                 <button
@@ -331,7 +351,9 @@ const TeacherCourses = () => {
 
               {/* Module editing section */}
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Edit Modules</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  Edit Modules
+                </h3>
 
                 {modules.map((module, index) => (
                   <div key={index} className="module-form space-y-3">
@@ -354,7 +376,9 @@ const TeacherCourses = () => {
                       <input
                         type="url"
                         value={module.resourceLink}
-                        onChange={(e) => handleModuleChange(e, index, "resourceLink")}
+                        onChange={(e) =>
+                          handleModuleChange(e, index, "resourceLink")
+                        }
                         className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>

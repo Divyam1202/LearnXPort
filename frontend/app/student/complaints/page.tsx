@@ -1,5 +1,6 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
+import axios from "axios";
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/app/providers/theme-providers";
 import { getUser, logout, hasRole } from "@/app/utils/auth";
@@ -29,51 +30,48 @@ const EditModal: React.FC<EditModalProps> = ({
   onUpdate,
 }) => {
   const [description, setDescription] = useState(complaint.description);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  const handleSubmit = async () => {
+    setIsLoading(true);
+    setError(null);
+
     try {
       await onUpdate(complaint._id, description);
       onClose();
-    } catch (error) {
-      console.error("Failed to update description:", error);
+    } catch (err) {
+      setError("Failed to update complaint");
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-lg mx-4">
-        <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
-          Edit Complaint
-        </h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full h-32 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            required
-          />
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-green-700 transition-colors duration-200 disabled:opacity-50"
-            >
-              {isSubmitting ? "Updating..." : "Update"}
-            </button>
-          </div>
-        </form>
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
+        <h2 className="text-xl font-bold mb-4">Edit Complaint</h2>
+        {error && <p className="text-red-500 mb-4">{error}</p>}
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className="w-full p-2 text-gray-900 border rounded-lg mb-4"
+        />
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-300 dark:bg-gray-700 rounded-lg"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg"
+            disabled={isLoading}
+          >
+            {isLoading ? "Updating..." : "Update"}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -83,181 +81,264 @@ export default function ComplaintsPage() {
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const [complaints, setComplaints] = useState<ComplaintType[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [newComplaint, setNewComplaint] = useState("");
+  const [newComplaintType, setNewComplaintType] = useState<
+    "Enroll" | "Withdraw" | "Completion" | "Other"
+  >("Other");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [user] = useState<User | null>(getUser() as User | null);
-  const [description, setDescription] = useState("");
-  const [type, setType] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [editingComplaint, setEditingComplaint] =
-    useState<ComplaintType | null>(null);
+  const [editComplaint, setEditComplaint] = useState<ComplaintType | null>(
+    null
+  );
   const [sortBy, setSortBy] = useState<
-    "all" | "Enroll" | "Withdraw" | "Completion" | "Other"
-  >("all");
+    "Enroll" | "Withdraw" | "Completion" | "Other" | "All"
+  >("All");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<
+    "All" | "Pending" | "Resolved"
+  >("All");
+  const [dateFilter, setDateFilter] = useState<
+    "All" | "today" | "week" | "month"
+  >("All");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     if (!user || !hasRole(["student"])) {
       router.push("/login");
       return;
     }
-    fetchComplaints();
-  }, [user, router]);
 
-  const fetchComplaints = async () => {
+    const fetchComplaints = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          router.push("/login");
+          return;
+        }
+
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/complaints/student/`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (response.data.success) {
+          setComplaints(response.data.complaints);
+        } else {
+          setError(response.data.message || "Error fetching complaints");
+        }
+      } catch (error) {
+        setError("Failed to fetch complaints");
+      }
+    };
+
+    fetchComplaints();
+  }, [router, user]);
+
+  const handleCreateComplaint = async () => {
+    setIsLoading(true);
+    setError(null);
+
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/student/complaint`,
+      if (!token) {
+        router.push("/login");
+        return;
+      }
+
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/complaints/create`,
+        {
+          description: newComplaint,
+          type: newComplaintType,
+        },
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
           },
         }
       );
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch complaints");
-      }
-
-      const data = await response.json();
-      if (data.success && Array.isArray(data.complaints)) {
-        setComplaints(data.complaints);
+      if (response.data.success) {
+        setComplaints((prev) => [response.data.complaint, ...prev]);
+        setNewComplaint("");
+        setNewComplaintType("Other");
+      } else {
+        setError(response.data.message || "Error creating complaint");
       }
     } catch (error) {
-      console.error("Failed to fetch complaints:", error);
+      setError("Failed to create complaint");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!description.trim()) return;
+  const handleUpdateComplaint = async (id: string, description: string) => {
+    setIsLoading(true);
+    setError(null);
 
-    setIsSubmitting(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/student/complaints`,
+      if (!token) {
+        router.push("/login");
+        return;
+      }
+
+      const response = await axios.patch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/complaints/student/update-complaint/${id}`,
+        { description },
         {
-          method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
           },
-          body: JSON.stringify({ description, type }),
         }
       );
 
-      if (!response.ok) {
-        throw new Error("Failed to submit complaint");
+      if (response.data.success) {
+        setComplaints((prev) =>
+          prev.map((complaint) =>
+            complaint._id === id ? response.data.complaint : complaint
+          )
+        );
+      } else {
+        setError(response.data.message || "Error updating complaint");
+      }
+    } catch (error) {
+      setError("Failed to update complaint");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteComplaint = async (id: string) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        router.push("/login");
+        return;
       }
 
-      setDescription("");
-      fetchComplaints();
+      const response = await axios.delete(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/complaints/student/${id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.data.success) {
+        setComplaints((prev) =>
+          prev.filter((complaint) => complaint._id !== id)
+        );
+      } else {
+        setError(response.data.message || "Error deleting complaint");
+      }
     } catch (error) {
-      console.error("Failed to submit complaint:", error);
+      setError("Failed to delete complaint");
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Pending":
+    switch (status.toLowerCase()) {
+      case "pending":
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
-      case "Resolved":
+      case "resolved":
         return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400";
     }
   };
 
-  const handleDelete = async (complaintId: string) => {
-    if (!confirm("Are you sure you want to delete this complaint?")) return;
+  const getFilteredComplaints = () => {
+    let filtered = [...complaints].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
 
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/student/complaint/${complaintId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to delete complaint");
-      }
-
-      // Refresh complaints list
-      fetchComplaints();
-    } catch (error) {
-      console.error("Failed to delete complaint:", error);
+    if (sortBy !== "All") {
+      filtered = filtered.filter((complaint) => complaint.type === sortBy);
     }
-  };
 
-  const handleMarkAsResolved = async (complaintId: string) => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/student/complaint-update/${complaintId}`,
-        {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ status: "Resolved" }),
-        }
+    if (statusFilter !== "All") {
+      filtered = filtered.filter(
+        (complaint) => complaint.status === statusFilter
       );
-
-      if (!response.ok) {
-        throw new Error("Failed to update complaint");
-      }
-
-      // Refresh complaints list
-      fetchComplaints();
-    } catch (error) {
-      console.error("Failed to update complaint:", error);
     }
-  };
 
-  const handleUpdateDescription = async (id: string, description: string) => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/student/complaint-update/${id}`,
-        {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ description }),
+    if (dateFilter !== "All") {
+      const now = new Date();
+      const today = new Date(now.setHours(0, 0, 0, 0));
+      filtered = filtered.filter((complaint) => {
+        const complaintDate = new Date(complaint.createdAt);
+        switch (dateFilter) {
+          case "today":
+            return complaintDate >= today;
+          case "week":
+            const weekAgo = new Date(now.setDate(now.getDate() - 7));
+            return complaintDate >= weekAgo;
+          case "month":
+            const monthAgo = new Date(now.setMonth(now.getMonth() - 1));
+            return complaintDate >= monthAgo;
+          default:
+            return true;
         }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to update complaint");
-      }
-
-      // Refresh complaints list
-      fetchComplaints();
-    } catch (error) {
-      console.error("Failed to update complaint:", error);
+      });
     }
+
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (complaint) =>
+          complaint.description
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          complaint.studentDetails?.firstName
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase())
+      );
+    }
+
+    return filtered;
   };
 
-  const getSortedComplaints = () => {
-    if (sortBy === "all") return complaints;
-    return complaints.filter((complaint) => complaint.type === sortBy);
-  };
+  const filteredComplaints = getFilteredComplaints();
+  const totalPages = Math.ceil(filteredComplaints.length / itemsPerPage);
+  const paginatedComplaints = filteredComplaints.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
-  if (!user) return null;
+  const FilterButton = ({
+    active,
+    onClick,
+    children,
+  }: {
+    active: boolean;
+    onClick: () => void;
+    children: React.ReactNode;
+  }) => (
+    <button
+      onClick={onClick}
+      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 
+        ${
+          active
+            ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30"
+            : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+        }`}
+    >
+      {children}
+    </button>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
@@ -269,7 +350,6 @@ export default function ComplaintsPage() {
               <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 dark:from-blue-400 dark:to-blue-300 text-transparent bg-clip-text">
                 Learn X Port
               </h1>
-              
               <span className="text-sm text-gray-500 dark:text-gray-400">
                 |
               </span>
@@ -291,188 +371,247 @@ export default function ComplaintsPage() {
                 Logout
               </button>
               <button
-              onClick={() => router.push('/student/dashboard')}
-              className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 rounded-xl transition-all duration-200"
-            >
-              Back to Dashboard
-            </button>
+                onClick={() => router.push("/student/dashboard")}
+                className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 rounded-xl transition-all duration-200"
+              >
+                Back to Dashboard
+              </button>
             </div>
           </div>
         </div>
       </nav>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header Section */}
         <div className="mb-8">
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 rounded-2xl p-8 text-white">
-            <h2 className="text-3xl font-bold mb-2">Submit a Complaint 📝</h2>
+          <div className="bg-gradient-to-br from-purple-500 to-blue-600 dark:from-purple-600 dark:to-purple-700 rounded-2xl p-8 text-white">
+            <h2 className="text-3xl font-bold mb-2">Your Complaints</h2>
             <p className="text-blue-100">
-              Let us know about any issues or concerns you have
+              Here you can raise and view your complaints.
             </p>
           </div>
         </div>
 
-        {/* Complaint Form */}
+        {error && (
+          <div className="bg-red-100 text-red-800 p-4 rounded mb-6">
+            {error}
+          </div>
+        )}
+
         <div className="mb-8">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
-              <div className="flex flex-wrap gap-3 mb-4">
-                {["Enroll", "Withdraw", "Completion","Other"].map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => setType(option)}
-                    className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 
-                      ${
-                        type === option
-                          ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30 scale-105 border-transparent"
-                          : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700"
-                      }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      {option === "Enroll" && "📚"}
-                      {option === "Withdraw" && "🔻"}
-                      {option === "Completion" && "✅"}
-                      {option === "Other" && "📝"}
-                      {option === "all" && "👀"}
-                      {option}
-                    </span>
-                  </button>
-                ))}
-              </div>
+          <h3 className="text-xl font-semibold mb-4">Submit a New Complaint</h3>
 
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe your complaint..."
-                className="w-full h-32 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              />
-
+          <div className="flex gap-2 mb-4">
+            {[
+              { label: "Enroll", icon: "📘" },
+              { label: "Withdraw", icon: "🔄" },
+              { label: "Completion", icon: "✅" },
+              { label: "Other", icon: "📝" },
+            ].map(({ label, icon }) => (
               <button
-                type="submit"
-                disabled={isSubmitting}
-                className="mt-4 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 disabled:opacity-50"
+                key={label}
+                type="button"
+                onClick={() =>
+                  setNewComplaintType(
+                    label as "Enroll" | "Withdraw" | "Completion" | "Other"
+                  )
+                }
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 ${
+                  newComplaintType === label
+                    ? "bg-blue-500 text-white"
+                    : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                }`}
               >
-                {isSubmitting ? "Submitting..." : "Submit Complaint"}
+                {icon} {label}
               </button>
-            </div>
-          </form>
+            ))}
+          </div>
+          <textarea
+            value={newComplaint}
+            onChange={(e) => setNewComplaint(e.target.value)}
+            className="w-full text-gray-900 p-2 border rounded-lg mb-4"
+            placeholder="Describe your complaint"
+          />
+          <button
+            onClick={handleCreateComplaint}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg"
+            disabled={isLoading}
+          >
+            {isLoading ? "Submitting..." : "Submit Complaint"}
+          </button>
         </div>
 
-        {/* Complaints List */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                Your Complaints
-              </h3>
-              <div className="flex flex-wrap gap-3">
-                {["all", "Enroll", "Withdraw", "Completion", "Other"].map((type) => (
-                  <button
-                    key={type}
+        <div className="mb-6 space-y-4">
+          {/* Search */}
+          <div className="flex gap-4">
+            <input
+              type="text"
+              placeholder="Search complaints..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-1 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+            />
+          </div>
+
+          {/* Filters */}
+          <div className="flex flex-wrap gap-4">
+            {/* Type Filters */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Type
+              </label>
+              <div className="flex gap-2">
+                {["All", "Enroll", "Withdraw", "Completion", "Other"].map(
+                  (type) => (
+                    <FilterButton
+                      key={type}
+                      active={sortBy === type}
+                      onClick={() => setSortBy(type as typeof sortBy)}
+                    >
+                      <span className="flex items-center gap-2">
+                        {type === "All" && "👀"}
+                        {type === "Enroll" && "📚"}
+                        {type === "Withdraw" && "🔄"}
+                        {type === "Completion" && "✅"}
+                        {type === "Other" && "📝"}
+                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                      </span>
+                    </FilterButton>
+                  )
+                )}
+              </div>
+            </div>
+
+            {/* Status Filters */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Status
+              </label>
+              <div className="flex gap-2">
+                {["All", "Pending", "Resolved"].map((status) => (
+                  <FilterButton
+                    key={status}
+                    active={statusFilter === status}
                     onClick={() =>
-                      setSortBy(
-                        type as "Enroll" | "Withdraw" | "Completion" | "Other" | "all"
-                      )
+                      setStatusFilter(status as typeof statusFilter)
                     }
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 
-                      ${
-                        sortBy === type
-                          ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30"
-                          : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-                      }`}
                   >
-                    <span className="flex items-center gap-2">
-                      {type === "Enroll" && "📚"}
-                      {type === "Withdraw" && "🔻"}
-                      {type === "Completion" && "✅"}
-                      {type === "Other" && "📝"}
-                      {type === "all" && "👀"}
-                      {type.charAt(0).toUpperCase() + type.slice(1)}
-                    </span>
-                  </button>
+                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                  </FilterButton>
+                ))}
+              </div>
+            </div>
+
+            {/* Date Filters */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Date
+              </label>
+              <div className="flex gap-2">
+                {[
+                  { value: "all", label: "All Time" },
+                  { value: "today", label: "Today" },
+                  { value: "week", label: "This Week" },
+                  { value: "month", label: "This Month" },
+                ].map((option) => (
+                  <FilterButton
+                    key={option.value}
+                    active={dateFilter === option.value}
+                    onClick={() =>
+                      setDateFilter(option.value as typeof dateFilter)
+                    }
+                  >
+                    {option.label}
+                  </FilterButton>
                 ))}
               </div>
             </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-900/50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Description
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Status
-                  </th>
-                  {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Actions
-                  </th> */}
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {getSortedComplaints().map((complaint) => (
-                  <tr
-                    key={complaint._id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {new Date(complaint.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      <span className="inline-flex items-center">
-                        {complaint.type === "Enroll" && "📚"}
-                        {complaint.type === "Withdraw" && "🔻"}
-                        {complaint.type === "Completion" && "✅"}
-                        {complaint.type === "Other" && "📝"}
-                        {complaint.type === "all" && "👀"}
-                        {complaint.type}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
-                      {complaint.description}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
-                          complaint.status
-                        )}`}
-                      >
-                        {complaint.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    </td>
-                  </tr>
-                ))}
-                {complaints.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={4}
-                      className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400"
+        </div>
+
+        <div>
+          <h3 className="text-xl font-semibold mb-4">Your Complaints</h3>
+          {paginatedComplaints.length === 0 ? (
+            <p className="text-gray-500">No complaints found.</p>
+          ) : (
+            <ul className="space-y-4">
+              {complaints.map((complaint) => (
+                <li
+                  key={complaint._id}
+                  className="p-4 border rounded-lg shadow-lg bg-white dark:bg-gray-800"
+                >
+                  <div className="flex justify-between items-center mb-2">
+                    <h4 className="text-lg font-semibold flex items-center gap-2">
+                      {complaint.type === "Enroll" && "📘"}
+                      {complaint.type === "Withdraw" && "🔄"}
+                      {complaint.type === "Completion" && "✅"}
+                      {complaint.type === "Other" && "📝"}
+                      {complaint.type} Complaint
+                    </h4>
+                    <span
+                      className={`px-2 py-1 rounded-lg text-sm ${
+                        complaint.status === "Resolved"
+                          ? "bg-green-200 text-green-800"
+                          : "bg-yellow-200 text-yellow-800"
+                      }`}
                     >
-                      No complaints found
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                      {complaint.status}
+                    </span>
+                  </div>
+                  <p className="text-gray-600 dark:text-gray-400 mb-2">
+                    {complaint.description}
+                  </p>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      onClick={() =>
+                        complaint.status !== "Resolved" &&
+                        setEditComplaint(complaint)
+                      }
+                      className={`px-4 py-2 rounded-lg ${
+                        complaint.status === "Resolved"
+                          ? "bg-gray-300 dark:bg-gray-700 cursor-not-allowed"
+                          : "bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600"
+                      }`}
+                      disabled={complaint.status === "Resolved"}
+                      title={
+                        complaint.status === "Resolved"
+                          ? "Cannot edit a resolved complaint."
+                          : ""
+                      }
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() =>
+                        complaint.status !== "Resolved" &&
+                        handleDeleteComplaint(complaint._id)
+                      }
+                      className={`px-4 py-2 rounded-lg ${
+                        complaint.status === "Resolved"
+                          ? "bg-red-300 cursor-not-allowed"
+                          : "bg-red-500 text-white hover:bg-red-600"
+                      }`}
+                      disabled={complaint.status === "Resolved"}
+                      title={
+                        complaint.status === "Resolved"
+                          ? "Cannot delete a resolved complaint."
+                          : ""
+                      }
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </main>
 
-      {editingComplaint && (
+      {editComplaint && (
         <EditModal
-          complaint={editingComplaint}
-          onClose={() => setEditingComplaint(null)}
-          onUpdate={handleUpdateDescription}
+          complaint={editComplaint}
+          onClose={() => setEditComplaint(null)}
+          onUpdate={handleUpdateComplaint}
         />
       )}
     </div>
